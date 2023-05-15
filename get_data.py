@@ -1,7 +1,3 @@
-import csv
-import firebase_admin
-from firebase_admin import credentials, storage
-
 import schedule
 import time as tm
 from datetime import datetime, timedelta, time
@@ -12,22 +8,33 @@ import json
 import requests
 from pathlib import Path
 
+import pyrebase
+
 #firebase**************************************************************************************
-# Initialize Firebase Admin SDK with your service account
-cred = credentials.Certificate('./service-account.json')
-default_app = firebase_admin.initialize_app(cred, {
-    'storageBucket': 'python-firebase-db-66ede.appspot.com'
-})
-bucket = storage.bucket()
+firebaseConfig = {
+  "apiKey": "AIzaSyDQwxFkWr0qAy3HF19Jl8CJNEONnP166ys",
+  "authDomain": "visualization-989dc.firebaseapp.com",
+  "projectId": "visualization-989dc",
+  "storageBucket": "visualization-989dc.appspot.com",
+  "messagingSenderId": "356199772761",
+  "appId": "1:356199772761:web:fc6c6960d822fd80cfb748",
+  "measurementId": "G-WT4SGNF0EJ",
+  "databaseURL": ""
+}
+
+firebase = pyrebase.initialize_app(firebaseConfig)
+storage =  firebase.storage()
 
 def upload_to_firebase(file_name):
-    blob = bucket.blob(file_name)
-    blob.upload_from_filename(file_name, content_type='text/csv')
+  storage.child(file_name).put(file_name)
+  file_url = storage.child(file_name).get_url(None)
+  print("Download URL:", file_url)
+  return file_url
+    
 
 
 def delete_from_firebase(file_name):
-    blob = bucket.blob(file_name)
-    blob.delete()
+  storage.child(file_name).delete()
 
 #process data***********************************************************************************
 file_path_world_history = Path("world_history.csv")
@@ -94,6 +101,7 @@ def get_all_country_data():
 
 #cronjob************************************************************************************************
 def job():
+    print("run")
     if file_path_world_history.is_file():
        file_path_world_history.unlink()
 
@@ -103,15 +111,17 @@ def job():
     get_world_history_data()
     get_all_country_data()
 
-    delete_from_firebase('world_history.csv')
-    delete_from_firebase('all_country_history.csv')
-
     upload_to_firebase('world_history.csv')
     upload_to_firebase('all_country_history.csv')
 
-# schedule.every(5).seconds.do(job)
 
 schedule.every().day.at("23:00").do(job)
 
+# schedule.every(20).seconds.do(job)
+
 while True:
     schedule.run_pending()
+
+
+
+
